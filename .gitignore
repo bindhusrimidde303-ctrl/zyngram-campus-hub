@@ -46,3 +46,9 @@ next-env.d.ts
 # Local backend database (contains account records)
 data/campus-hub-db.json
 data/campus-hub-db.json.tmp
+
+.next/
+**/.next/
+node_modules/
+.env*
+!.env.example
