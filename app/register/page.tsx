@@ -19,9 +19,13 @@ export default function RegisterPage() {
   const [agree, setAgree] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (isLoading) return;
+
     setError("");
     setMessage("");
 
@@ -39,6 +43,8 @@ export default function RegisterPage() {
       setError("Please accept the terms to continue.");
       return;
     }
+
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/register", {
@@ -59,10 +65,12 @@ export default function RegisterPage() {
         return;
       }
 
-      setMessage("Account created! Redirecting to sign in...");
-      window.setTimeout(() => router.push("/login"), 900);
+      setMessage("Account created successfully! Redirecting to sign in...");
+      router.replace("/login");
     } catch {
       setError("Cannot connect to the Campus Hub backend. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -114,6 +122,7 @@ export default function RegisterPage() {
                   value={role}
                   onChange={(e) => setRole(e.target.value as Role)}
                   required
+                  disabled={isLoading}
                 >
                   <option value="student">Student</option>
                   <option value="trainer">Trainer</option>
@@ -131,6 +140,7 @@ export default function RegisterPage() {
                   placeholder="Enter your full name"
                   autoComplete="name"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -144,6 +154,7 @@ export default function RegisterPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -158,6 +169,7 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   minLength={8}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -171,6 +183,7 @@ export default function RegisterPage() {
                   placeholder="Enter your password again"
                   autoComplete="new-password"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -179,6 +192,7 @@ export default function RegisterPage() {
                   type="checkbox"
                   checked={showPassword}
                   onChange={(e) => setShowPassword(e.target.checked)}
+                  disabled={isLoading}
                 />
                 <span>Show passwords</span>
               </label>
@@ -188,6 +202,7 @@ export default function RegisterPage() {
                   type="checkbox"
                   checked={agree}
                   onChange={(e) => setAgree(e.target.checked)}
+                  disabled={isLoading}
                 />
                 <span>I agree to the terms of use.</span>
               </label>
@@ -200,8 +215,14 @@ export default function RegisterPage() {
                 <p className="auth-success" role="status">{message}</p>
               )}
 
-              <button className="auth-button" type="submit">
-                Create account <span aria-hidden="true">→</span>
+              <button
+                className="auth-button"
+                type="submit"
+                disabled={isLoading}
+                aria-busy={isLoading}
+              >
+                {isLoading ? "Creating account..." : "Create account"}
+                {!isLoading && <span aria-hidden="true"> →</span>}
               </button>
             </form>
 
