@@ -53,9 +53,10 @@ export async function POST(request: Request) {
     }
 
     const role = requestedRole as Role;
-    const store = readStore();
 
-    ensureSeedAdmin(store);
+    await ensureSeedAdmin();
+
+    const store = await readStore();
 
     if (store.users.some((user) => user.email === email)) {
       return Response.json(
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
 
     store.users.push(user);
     addAudit(store, email, `Registered ${role} account`);
-    writeStore(store);
+
+    await writeStore(store);
 
     return Response.json(
       {
