@@ -114,7 +114,7 @@ export default function StakeholderDashboard({ role }: { role: Role }) {
   const notify = (message: string) => { setNotice(message); window.setTimeout(() => setNotice(""), 3500); };
   const updateBatches = (next: Batch[]) => { setBatches(next); store("batches", next); };
   const updateAssessments = (next: typeof assessments) => { setAssessments(next); store("assessments", next); };
-  const updateFeedback = (next: typeof feedback) => { setFeedback(next); store("feedback", next); };
+  const updateFeedback = (next: typeof feedback) => { store("feedback", next); setFeedback(next); };
   const updateSchedule = (next: ScheduleItem[]) => { setSchedule(next); store("schedule", next); };
   const updateAnnouncements = (next: Announcement[]) => { setAnnouncements(next); store("announcements", next); };
   const updateEscalations = (next: typeof escalations) => { setEscalations(next); store("escalations", next); };
@@ -189,9 +189,33 @@ async function logout() {
     updateAssessments(next); logAction(`Recorded assessment for ${studentName.trim()}`); setStudentName(""); setAssessmentFeedback(""); notify("Assessment saved.");
   }
   function addFeedback(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); if (!feedbackText.trim()) return;
-    const next = [{ id: Date.now(), student: studentName.trim() || "Student", text: feedbackText.trim(), date: new Date().toLocaleDateString() }, ...feedback];
-    updateFeedback(next); logAction("Added student feedback note"); setFeedbackText(""); notify("Feedback saved.");
+    e.preventDefault();
+    const text = feedbackText.trim();
+    if (!text) {
+      notify("Please enter feedback before saving.");
+      return;
+    }
+
+    const next = [
+      {
+        id: Date.now(),
+        student: studentName.trim() || "Student",
+        text,
+        date: new Date().toLocaleDateString(),
+      },
+      ...feedback,
+    ];
+
+    try {
+      // Save first. Only update the screen and clear the form if storage succeeds.
+      updateFeedback(next);
+      logAction("Added student feedback note");
+      setFeedbackText("");
+      notify("Feedback saved in this browser.");
+    } catch (error) {
+      console.error("Failed to save feedback:", error);
+      notify("Feedback could not be saved. Check browser storage and try again.");
+    }
   }
   function addBatch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -260,7 +284,7 @@ async function logout() {
       {role === "trainer" && <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[{ label: "Assigned batches", value: batches.length }, { label: "Learners across batches", value: batches.reduce((n, b) => n + b.students, 0) }, { label: "Assessments recorded", value: assessments.length }, { label: "Feedback notes", value: feedback.length }].map((item) => <article key={item.label} className={panel}><p className="text-sm text-slate-500">{item.label}</p><p className="mt-3 text-3xl font-bold text-slate-950">{item.value}</p></article>)}</section>
         <section className={panel}>{heading("Assigned batches & attendance", "Mark each batch's attendance status for this demo. The latest status is saved locally.")}<div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b text-xs uppercase tracking-wide text-slate-500"><th className="py-3 pr-4">Batch</th><th className="py-3 pr-4">Course</th><th className="py-3 pr-4">Students</th><th className="py-3 pr-4">Attendance</th><th className="py-3">Action</th></tr></thead><tbody>{batches.map((b) => <tr key={b.id} className="border-b border-slate-100"><td className="py-4 pr-4 font-semibold text-slate-900">{b.name}</td><td className="py-4 pr-4">{b.course}</td><td className="py-4 pr-4">{b.students}</td><td className="py-4 pr-4"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs">{b.attendance}</span></td><td className="py-4"><select aria-label={`Attendance for ${b.name}`} className={field + " mt-0 max-w-40"} value={b.attendance} onChange={(e) => { updateBatches(batches.map((item) => item.id === b.id ? { ...item, attendance: e.target.value } : item)); logAction(`Updated attendance for ${b.name}: ${e.target.value}`); notify("Attendance status updated."); }}><option>Not marked</option><option>Completed</option><option>Pending review</option><option>Cancelled</option></select></td></tr>)}</tbody></table></div></section>
-        <div className="grid gap-6 lg:grid-cols-2"><section className={panel}>{heading("Task assessment", "Record a learner, batch, score and written feedback.")}<form onSubmit={addAssessment} className="space-y-3"><label className="block text-sm font-semibold">Student name<input className={field} value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Enter student name" required /></label><label className="block text-sm font-semibold">Batch<select className={field} value={assessmentBatch} onChange={(e) => setAssessmentBatch(e.target.value)}>{batches.map((b) => <option key={b.id}>{b.name}</option>)}</select></label><label className="block text-sm font-semibold">Score (%)<input className={field} type="number" min="0" max="100" value={score} onChange={(e) => setScore(e.target.value)} required /></label><label className="block text-sm font-semibold">Assessment feedback<textarea className={field} rows={3} value={assessmentFeedback} onChange={(e) => setAssessmentFeedback(e.target.value)} placeholder="Strengths and next steps" /></label><button className={button}>Save assessment</button></form></section><section className={panel}>{heading("Student feedback", "Keep a short note from a student or a follow-up conversation.")}<form onSubmit={addFeedback} className="space-y-3"><label className="block text-sm font-semibold">Student name (optional)<input className={field} value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Student name" /></label><label className="block text-sm font-semibold">Feedback note<textarea className={field} rows={4} value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} placeholder="Enter feedback or follow-up" required /></label><button className={button}>Save feedback</button></form></section></div>
+        <div className="grid gap-6 lg:grid-cols-2"><section className={panel}>{heading("Task assessment", "Record a learner, batch, score and written feedback.")}<form onSubmit={addAssessment} className="space-y-3"><label className="block text-sm font-semibold">Student name<input className={field} value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Enter student name" required /></label><label className="block text-sm font-semibold">Batch<select className={field} value={assessmentBatch} onChange={(e) => setAssessmentBatch(e.target.value)}>{batches.map((b) => <option key={b.id}>{b.name}</option>)}</select></label><label className="block text-sm font-semibold">Score (%)<input className={field} type="number" min="0" max="100" value={score} onChange={(e) => setScore(e.target.value)} required /></label><label className="block text-sm font-semibold">Assessment feedback<textarea className={field} rows={3} value={assessmentFeedback} onChange={(e) => setAssessmentFeedback(e.target.value)} placeholder="Strengths and next steps" /></label><button className={button}>Save assessment</button></form></section><section className={panel}>{heading("Student feedback", "Keep a short note from a student or a follow-up conversation.")}<form onSubmit={addFeedback} className="space-y-3"><label className="block text-sm font-semibold">Student name (optional)<input className={field} value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Student name" /></label><label className="block text-sm font-semibold">Feedback note<textarea className={field} rows={4} value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} placeholder="Enter feedback or follow-up" required /></label><button className={button} type="submit">Save feedback</button></form><div className="mt-6 border-t border-slate-200 pt-5"><h3 className="text-base font-bold text-slate-900">Saved feedback</h3><p className="mt-1 text-sm text-slate-500">Feedback notes saved in this browser.</p>{feedback.length === 0 ? <p className="mt-3 text-sm text-slate-500">No feedback saved yet.</p> : <div className="mt-3 space-y-3">{feedback.map((item) => <article key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-slate-900">{item.student}</p><span className="text-xs text-slate-500">{item.date}</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.text}</p></article>)}</div>}</div></section></div>
         <section className={panel}>{heading("Recent assessments", "Saved assessment records in this browser.")}{assessments.length === 0 ? <p className="text-sm text-slate-500">No assessments recorded yet.</p> : <div className="space-y-3">{assessments.map((a) => <article key={a.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap justify-between gap-2"><strong>{a.student}</strong><span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{a.score}%</span></div><p className="mt-1 text-sm text-slate-500">{a.batch}</p>{a.feedback && <p className="mt-2 text-sm">{a.feedback}</p>}</article>)}</div>}</section>
       </>}
 
