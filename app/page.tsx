@@ -146,7 +146,12 @@ export default function Home() {
     } catch {
       currentEmail = "";
     }
-    setEmail(currentEmail);
+        setEmail(currentEmail);
+
+    if (!currentEmail) {
+      window.location.replace("/login");
+      return;
+    }
 function getProfileKey(userEmail: string) {
   return `${storageKeys.profile}_${userEmail.trim().toLowerCase()}`;
 }
